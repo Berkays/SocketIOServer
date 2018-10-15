@@ -1,50 +1,55 @@
 const shortid = require('shortid');
 
-import { Player } from "./Player";
 import { RoomState } from "./RoomState";
 import { MatchmakeState } from "./MatchmakeState";
-import { PlayerDictionary } from "./PlayerDictionary";
-
-const maxPlayerCount = 2;
+import { Client } from "./Client";
 
 export class Room {
-    roomId: string;
-    playerCount: number;
-    players: PlayerDictionary;
-    
-    private lock: boolean;
 
-    private roomState: RoomState;
-    private prevRoomState: RoomState;
+    private roomId: string;
+    private state: RoomState;
+    private server: SocketIO.Server;
 
-    constructor() {
+    constructor(server: SocketIO.Server) {
+        //generate unique id for room
         this.roomId = shortid.generate();
-        this.playerCount = 0;
-        this.lock = false;
-        
-        this.players = new PlayerDictionary();
-        this.roomState = new MatchmakeState();
+
+        this.server = server;
+
+        //Set matchmaking state
+        this.state = new MatchmakeState();
     }
 
-    public isJoinable(): boolean {
-        if (this.lock == true)
-            return false;
-
-        if (this.playerCount < maxPlayerCount) {
-            return true;
-        }
-        else {
-            return false;
-        }
+    get RoomId(): string {
+        return this.roomId;
     }
 
-    public Join(player: Player): void {
-        this.players[player.id] = player;
-        this.playerCount++;
+    public getState(): RoomState {
+        return this.state;
     }
 
-    public Leave(player: Player): void {
-        delete this.players[player.id];
-        this.playerCount--;
+    public requestJoin(client: Client): boolean {
+        return this.state.requestJoin(client);
+    }
+
+    public onClientJoin(client: Client): void {
+        this.state.clientJoin(client);
+    }
+
+    public onClientLeave(client: Client): void {
+        this.state.clientLeave(client);
+    }
+
+    public broadcast(data: string): void {
+        this.server.in(this.roomId).emit("broadcast", data);
+    }
+
+    private patchState(): void {
+        //Delta fossil algorithm patch prev&current state
+    }
+
+    private sendState(): void {
+        //Send state changes
+        this.patchState();
     }
 }

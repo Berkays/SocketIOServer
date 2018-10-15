@@ -2,33 +2,38 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const shortid = require('shortid');
 const MatchmakeState_1 = require("./MatchmakeState");
-const PlayerDictionary_1 = require("./PlayerDictionary");
-const maxPlayerCount = 2;
 class Room {
-    constructor() {
+    constructor(server) {
+        //generate unique id for room
         this.roomId = shortid.generate();
-        this.playerCount = 0;
-        this.lock = false;
-        this.players = new PlayerDictionary_1.PlayerDictionary();
-        this.roomState = new MatchmakeState_1.MatchmakeState();
+        this.server = server;
+        //Set matchmaking state
+        this.state = new MatchmakeState_1.MatchmakeState();
     }
-    isJoinable() {
-        if (this.lock == true)
-            return false;
-        if (this.playerCount < maxPlayerCount) {
-            return true;
-        }
-        else {
-            return false;
-        }
+    get RoomId() {
+        return this.roomId;
     }
-    Join(player) {
-        this.players[player.id] = player;
-        this.playerCount++;
+    getState() {
+        return this.state;
     }
-    Leave(player) {
-        delete this.players[player.id];
-        this.playerCount--;
+    requestJoin(client) {
+        return this.state.requestJoin(client);
+    }
+    onClientJoin(client) {
+        this.state.clientJoin(client);
+    }
+    onClientLeave(client) {
+        this.state.clientLeave(client);
+    }
+    broadcast(data) {
+        this.server.in(this.roomId).emit("broadcast", data);
+    }
+    patchState() {
+        //Delta fossil algorithm patch prev&current state
+    }
+    sendState() {
+        //Send state changes
+        this.patchState();
     }
 }
 exports.Room = Room;

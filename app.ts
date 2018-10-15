@@ -1,7 +1,7 @@
 import { Room } from "./Room";
 import { RoomDictionary } from "./RoomDictionary";
 import SocketIO = require('socket.io');
-import { Player } from "./Player";
+import { Client } from "./Client";
 
 const express = require('express');
 const app = express();
@@ -12,35 +12,38 @@ const port = 5000;
 
 let rooms = new RoomDictionary();
 
-io.on('connection', function (socket) {
+io.on('connection', (socket) => {
+
 
     //Search for an available room or create one
-    socket.on('matchmake', matchmakePlayer);
+    socket.on('matchmake', (client: Client) => matchmakePlayer(socket, client));
 });
 
 server.listen(port);
 
 
-function matchmakePlayer(socket: SocketIO.Socket, player: Player): void {
+function matchmakePlayer(socket: SocketIO.Socket, client: Client): void {
+
     let room: Room = null;
 
-    //Search room
-    room = searchRoom();
+    //Search for an available room.
+    room = searchRoom(client);
 
-    //Create room
+    //If no available room found, create new room.
     if (room == null)
         room = createRoom();
 
-    room.Join(player);
+    //Add client to room
+    room.onClientJoin(client);
 
-    socket.emit('onRoomJoin', room.roomId);
-    socket.on('roomLeave', (player: Player) => {
-        rooms[player.connectedRoom].Leave(player);
-        destroyRoom(rooms[player.connectedRoom]);
+    //Notify client on room join
+    socket.join(room.RoomId, () => {
+        socket.emit('roomJoin', room.RoomId);
     });
 }
 
-function searchRoom(): Room {
+
+function searchRoom(client: Client): Room {
     if (rooms == null)
         return null;
     let _room: Room = null;
@@ -49,7 +52,7 @@ function searchRoom(): Room {
 
         debugSearchRoom(room);
 
-        if (room.isJoinable())
+        if (room.requestJoin(client))
             _room = room;
     });
 
@@ -57,30 +60,33 @@ function searchRoom(): Room {
 }
 
 function createRoom(): Room {
-    let room = new Room();
+    let room = new Room(io);
 
-    rooms[room.roomId] = room;
+    rooms[room.RoomId] = room;
 
     debugCreateRoom(room);
 
     return room;
 }
 
-function destroyRoom(room: Room): void {
-    if (room.playerCount == 0) {
-        delete rooms[room.roomId];
-        room = null;
-    }
-}
-
 function debugSearchRoom(room: Room): void {
     if (room != null) {
-        console.log("Room found: " + room.roomId);
+        console.log("Room found: " + room.RoomId);
     }
     else {
         console.log("Room not found. Creating...");
     }
 }
+
 function debugCreateRoom(room: Room): void {
-    console.log("Room created: " + room.roomId);
+    console.log("Room created: " + room.RoomId);
+}
+
+function broadcastTest(): void {
+    setTimeout(() => {
+        Object.keys(rooms).forEach((key) => {
+            let room = rooms[key];
+            room.broadcast("hi from " + room.RoomId);
+        });
+    }, 5000);
 }

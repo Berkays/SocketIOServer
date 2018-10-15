@@ -9,57 +9,59 @@ const server = require('http').Server(app);
 const io = SocketIO(server);
 const port = 5000;
 let rooms = new RoomDictionary_1.RoomDictionary();
-io.on('connection', function (socket) {
+io.on('connection', (socket) => {
     //Search for an available room or create one
-    socket.on('matchmake', matchmakePlayer);
+    socket.on('matchmake', (client) => matchmakePlayer(socket, client));
 });
 server.listen(port);
-function matchmakePlayer(socket, player) {
+function matchmakePlayer(socket, client) {
     let room = null;
-    //Search room
-    room = searchRoom();
-    //Create room
+    //Search for an available room.
+    room = searchRoom(client);
+    //If no available room found, create new room.
     if (room == null)
         room = createRoom();
-    room.Join(player);
-    socket.emit('onRoomJoin', room.roomId);
-    socket.on('roomLeave', (player) => {
-        rooms[player.connectedRoom].Leave(player);
-        destroyRoom(rooms[player.connectedRoom]);
+    //Add client to room
+    room.onClientJoin(client);
+    //Notify client on room join
+    socket.join(room.RoomId, () => {
+        socket.emit('roomJoin', room.RoomId);
     });
 }
-function searchRoom() {
+function searchRoom(client) {
     if (rooms == null)
         return null;
     let _room = null;
     Object.keys(rooms).forEach((key) => {
         let room = rooms[key];
         debugSearchRoom(room);
-        if (room.isJoinable())
+        if (room.requestJoin(client))
             _room = room;
     });
     return _room;
 }
 function createRoom() {
-    let room = new Room_1.Room();
-    rooms[room.roomId] = room;
+    let room = new Room_1.Room(io);
+    rooms[room.RoomId] = room;
     debugCreateRoom(room);
     return room;
 }
-function destroyRoom(room) {
-    if (room.playerCount == 0) {
-        delete rooms[room.roomId];
-        room = null;
-    }
-}
 function debugSearchRoom(room) {
     if (room != null) {
-        console.log("Room found: " + room.roomId);
+        console.log("Room found: " + room.RoomId);
     }
     else {
         console.log("Room not found. Creating...");
     }
 }
 function debugCreateRoom(room) {
-    console.log("Room created: " + room.roomId);
+    console.log("Room created: " + room.RoomId);
+}
+function broadcastTest() {
+    setTimeout(() => {
+        Object.keys(rooms).forEach((key) => {
+            let room = rooms[key];
+            room.broadcast("hi from " + room.RoomId);
+        });
+    }, 5000);
 }

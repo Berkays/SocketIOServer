@@ -1,9 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class RoomState {
-    onClientJoin(client) {
+    requestJoin(client) {
+        return true;
     }
-    onClientLeave(client) {
+    clientJoin(client) {
+    }
+    clientLeave(client) {
     }
 }
 exports.RoomState = RoomState;
