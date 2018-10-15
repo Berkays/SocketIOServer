@@ -11,17 +11,25 @@ export class Room {
     roomId: string;
     playerCount: number;
     players: PlayerDictionary;
+    
+    private lock: boolean;
 
-    roomState: RoomState;
+    private roomState: RoomState;
+    private prevRoomState: RoomState;
 
     constructor() {
         this.roomId = shortid.generate();
         this.playerCount = 0;
+        this.lock = false;
+        
         this.players = new PlayerDictionary();
         this.roomState = new MatchmakeState();
     }
 
     public isJoinable(): boolean {
+        if (this.lock == true)
+            return false;
+
         if (this.playerCount < maxPlayerCount) {
             return true;
         }

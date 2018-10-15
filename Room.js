@@ -8,10 +8,13 @@ class Room {
     constructor() {
         this.roomId = shortid.generate();
         this.playerCount = 0;
+        this.lock = false;
         this.players = new PlayerDictionary_1.PlayerDictionary();
         this.roomState = new MatchmakeState_1.MatchmakeState();
     }
     isJoinable() {
+        if (this.lock == true)
+            return false;
         if (this.playerCount < maxPlayerCount) {
             return true;
         }

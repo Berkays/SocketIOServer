@@ -11,25 +11,23 @@ const port = 5000;
 let rooms = new RoomDictionary_1.RoomDictionary();
 io.on('connection', function (socket) {
     //Search for an available room or create one
-    socket.on('matchmake', (player) => {
-        let room = null;
-        //Search room
-        room = searchRoom();
-        //Create room
-        if (room == null)
-            room = createRoom();
-        room.Join(player);
-        socket.emit('onRoomJoin', room.roomId);
-        socket.on('roomLeave', (player) => {
-            rooms[player.connectedRoom].Leave(player);
-            destroyRoom(rooms[player.connectedRoom]);
-        });
-    });
-    socket.on('disconnect', () => {
-        console.log("user disconnected");
-    });
+    socket.on('matchmake', matchmakePlayer);
 });
 server.listen(port);
+function matchmakePlayer(socket, player) {
+    let room = null;
+    //Search room
+    room = searchRoom();
+    //Create room
+    if (room == null)
+        room = createRoom();
+    room.Join(player);
+    socket.emit('onRoomJoin', room.roomId);
+    socket.on('roomLeave', (player) => {
+        rooms[player.connectedRoom].Leave(player);
+        destroyRoom(rooms[player.connectedRoom]);
+    });
+}
 function searchRoom() {
     if (rooms == null)
         return null;

@@ -15,40 +15,35 @@ let rooms = new RoomDictionary();
 io.on('connection', function (socket) {
 
     //Search for an available room or create one
-    socket.on('matchmake', (player: Player) => {
-
-        let room: Room = null;
-
-        //Search room
-        room = searchRoom();
-
-        //Create room
-        if (room == null)
-            room = createRoom();
-
-        room.Join(player);
-
-        socket.emit('onRoomJoin', room.roomId);
-        socket.on('roomLeave', (player: Player) => {
-            rooms[player.connectedRoom].Leave(player);
-            destroyRoom(rooms[player.connectedRoom]);
-        });
-
-    });
-
-    socket.on('disconnect', () => {
-        console.log("user disconnected");
-    });
-
+    socket.on('matchmake', matchmakePlayer);
 });
 
 server.listen(port);
 
 
+function matchmakePlayer(socket: SocketIO.Socket, player: Player): void {
+    let room: Room = null;
+
+    //Search room
+    room = searchRoom();
+
+    //Create room
+    if (room == null)
+        room = createRoom();
+
+    room.Join(player);
+
+    socket.emit('onRoomJoin', room.roomId);
+    socket.on('roomLeave', (player: Player) => {
+        rooms[player.connectedRoom].Leave(player);
+        destroyRoom(rooms[player.connectedRoom]);
+    });
+}
+
 function searchRoom(): Room {
     if (rooms == null)
         return null;
-    let _room:Room = null;
+    let _room: Room = null;
     Object.keys(rooms).forEach((key) => {
         let room = rooms[key];
 
@@ -72,8 +67,7 @@ function createRoom(): Room {
 }
 
 function destroyRoom(room: Room): void {
-    if (room.playerCount == 0)
-    {
+    if (room.playerCount == 0) {
         delete rooms[room.roomId];
         room = null;
     }
