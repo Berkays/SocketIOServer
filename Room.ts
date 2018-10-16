@@ -3,6 +3,7 @@ const shortid = require('shortid');
 import { RoomState } from "./RoomState";
 import { MatchmakeState } from "./MatchmakeState";
 import { Client } from "./Client";
+import { Socket } from "socket.io";
 
 export class Room {
 
@@ -33,11 +34,19 @@ export class Room {
     }
 
     public onClientJoin(client: Client): void {
+        //Notify client on room join
+        this.server.in(this.roomId).emit('roomJoin', client.clientId);
         this.state.clientJoin(client);
     }
 
     public onClientLeave(client: Client): void {
+
+        console.log("Client left the room");
         this.state.clientLeave(client);
+    }
+
+    public onMessage(): void {
+        this.server.on("message", (data: string) => console.log(data));
     }
 
     public broadcast(data: string): void {

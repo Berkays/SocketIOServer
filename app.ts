@@ -33,12 +33,13 @@ function matchmakePlayer(socket: SocketIO.Socket, client: Client): void {
     if (room == null)
         room = createRoom();
 
-    //Add client to room
-    room.onClientJoin(client);
-
-    //Notify client on room join
     socket.join(room.RoomId, () => {
-        socket.emit('roomJoin', room.RoomId);
+        room.onClientJoin(client);
+
+        socket.on('roomLeave', () => {
+            room.onClientLeave(client);
+            socket.leave(room.RoomId);
+        });
     });
 }
 
@@ -80,13 +81,4 @@ function debugSearchRoom(room: Room): void {
 
 function debugCreateRoom(room: Room): void {
     console.log("Room created: " + room.RoomId);
-}
-
-function broadcastTest(): void {
-    setTimeout(() => {
-        Object.keys(rooms).forEach((key) => {
-            let room = rooms[key];
-            room.broadcast("hi from " + room.RoomId);
-        });
-    }, 5000);
 }
