@@ -1,14 +1,17 @@
+import { EventEmitter } from "events";
+const BSON = require('bson');
+
 import { RoomState } from "./RoomState";
 import { Client } from "./Client";
-import { ClientDictionary } from "./ClientDictionary";
-import { EventEmitter } from "events";
+import { ClientMap } from "./ClientMap";
+
 
 const maxPlayerCount = 2;
 
 export class MatchmakeState extends RoomState {
 
     //List of connected clients in the room
-    private clients: ClientDictionary;
+    private clients: ClientMap;
     //Current player count in the room
     private playerCount: number;
     //Locked rooms cannot be joined
@@ -17,7 +20,7 @@ export class MatchmakeState extends RoomState {
     constructor(stateEvents: EventEmitter) {
         super(stateEvents);
 
-        this.clients = new ClientDictionary();
+        this.clients = {};
         this.playerCount = 0;
         this.locked = false;
     }
@@ -62,8 +65,15 @@ export class MatchmakeState extends RoomState {
         }
     }
 
-    public onClientMessage(data: string): void {
+    onClientMessage(data: string): void {
         //Do nothing in matchmaking
+    }
+
+    Serialize(): Buffer {
+        return BSON.serialize({
+            clients: this.clients,
+            playerCount: this.playerCount
+        });
     }
 
 }

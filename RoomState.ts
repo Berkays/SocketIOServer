@@ -24,4 +24,6 @@ export abstract class RoomState {
     abstract onClientLeave(client: Client): void;
 
     abstract onClientMessage(data: string): void
+
+    abstract Serialize(): Buffer;
 }

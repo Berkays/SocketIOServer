@@ -23,8 +23,6 @@ export class Room {
         this.server = server;
         //Set matchmaking state
         this.state = new MatchmakeState(this.roomEventEmitter);
-
-        setInterval(() => this.broadcast<string>("HELLO WORLD"), 2000);
     }
 
     //Get socket with client id
@@ -82,7 +80,8 @@ export class Room {
     private sendState(): void {
         this.patchState();
 
-        var buffer = this.state.Serialize();
+        var serializedState = this.state.Serialize();
+        this.broadcast<Buffer>(serializedState);
     }
 
     private changeState(newState: RoomState): void {
