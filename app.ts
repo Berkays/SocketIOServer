@@ -1,6 +1,7 @@
+import SocketIO = require('socket.io');
+
 import { Room } from "./Room";
 import { RoomDictionary } from "./RoomDictionary";
-import SocketIO = require('socket.io');
 import { Client } from "./Client";
 
 const express = require('express');
@@ -13,15 +14,13 @@ const port = 5000;
 let rooms = new RoomDictionary();
 
 io.on('connection', (socket) => {
-
-
     //Search for an available room or create one
     socket.on('matchmake', (client: Client) => matchmakePlayer(socket, client));
 });
 
 server.listen(port);
 
-
+//Joins client socket to a new or existing room.
 function matchmakePlayer(socket: SocketIO.Socket, client: Client): void {
 
     let room: Room = null;
@@ -33,17 +32,12 @@ function matchmakePlayer(socket: SocketIO.Socket, client: Client): void {
     if (room == null)
         room = createRoom();
 
-    socket.join(room.RoomId, () => {
-        room.onClientJoin(client);
-
-        socket.on('roomLeave', () => {
-            room.onClientLeave(client);
-            socket.leave(room.RoomId);
-        });
+    socket.join(room.roomId, () => {
+        room.clientJoin(client);
     });
 }
 
-
+//Searches an available room from the rooms list.
 function searchRoom(client: Client): Room {
     if (rooms == null)
         return null;
@@ -51,19 +45,21 @@ function searchRoom(client: Client): Room {
     Object.keys(rooms).forEach((key) => {
         let room = rooms[key];
 
-        debugSearchRoom(room);
-
         if (room.requestJoin(client))
             _room = room;
+
+
+        debugSearchRoom(_room);
     });
 
     return _room;
 }
 
+//Creates a new room.
 function createRoom(): Room {
     let room = new Room(io);
 
-    rooms[room.RoomId] = room;
+    rooms[room.roomId] = room;
 
     debugCreateRoom(room);
 
@@ -72,7 +68,7 @@ function createRoom(): Room {
 
 function debugSearchRoom(room: Room): void {
     if (room != null) {
-        console.log("Room found: " + room.RoomId);
+        console.log("Room found: " + room.roomId);
     }
     else {
         console.log("Room not found. Creating...");
@@ -80,5 +76,5 @@ function debugSearchRoom(room: Room): void {
 }
 
 function debugCreateRoom(room: Room): void {
-    console.log("Room created: " + room.RoomId);
+    console.log("Room created: " + room.roomId);
 }
