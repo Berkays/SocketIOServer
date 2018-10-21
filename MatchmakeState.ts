@@ -1,17 +1,21 @@
 import { RoomState } from "./RoomState";
 import { Client } from "./Client";
 import { ClientDictionary } from "./ClientDictionary";
+import { EventEmitter } from "events";
 
 const maxPlayerCount = 2;
 
 export class MatchmakeState extends RoomState {
 
-    clients: ClientDictionary;
-    playerCount: number;
-    locked: boolean; //Lock is used to prevent clients from joining the room
+    //List of connected clients in the room
+    private clients: ClientDictionary;
+    //Current player count in the room
+    private playerCount: number;
+    //Locked rooms cannot be joined
+    private locked: boolean;
 
-    constructor() {
-        super();
+    constructor(stateEvents: EventEmitter) {
+        super(stateEvents);
 
         this.clients = new ClientDictionary();
         this.playerCount = 0;
@@ -30,8 +34,9 @@ export class MatchmakeState extends RoomState {
         }
     }
 
-    public clientJoin(client: Client): void {
-
+    onClientJoin(client: Client): void {
+        if (this.clients[client.clientId])
+            return;
         this.clients[client.clientId] = client;
         this.playerCount++;
 
@@ -41,21 +46,24 @@ export class MatchmakeState extends RoomState {
         }
     }
 
-    public clientLeave(client: Client) {
+    onClientLeave(client: Client): void {
+        if (!this.clients[client.clientId])
+            return;
+
         delete this.clients[client.clientId];
         this.playerCount--;
 
-        
-        if (this.playerCount == 0)
-        {
+        if (this.playerCount == 0) {
             //Do:destroy room
         }
-        else if(this.locked)
-        {
+        else if (this.locked) {
             //Unlock room for join
             this.locked = false;
         }
     }
 
+    public onClientMessage(data: string): void {
+        //Do nothing in matchmaking
+    }
 
 }
