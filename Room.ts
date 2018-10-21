@@ -23,6 +23,8 @@ export class Room {
         this.server = server;
         //Set matchmaking state
         this.state = new MatchmakeState(this.roomEventEmitter);
+
+        setInterval(() => this.broadcast<string>("HELLO WORLD"), 2000);
     }
 
     //Get socket with client id
@@ -30,39 +32,31 @@ export class Room {
         return this.server.sockets.connected[client.clientId];
     }
 
-    private setClientJoinEvents(client: Client): void {
-        let socket = this.getSocket(client);
-
-        socket.emit('roomJoin', this.roomId);
-
-        socket.on('roomLeave', () => {
-            this.clientLeave(client);
-            socket.leave(this.roomId);
-        });
-
-        socket.on('disconnect', () => {
-            this.clientLeave(client);
-            socket.leave(this.roomId);
-        });
-        // socket.on('messageSend', (msg: string) => {
-        //     socket.in(this.roomId).emit('broadcast', msg);
-        // });
-    }
-
     public requestJoin(client: Client): boolean {
         return this.state.requestJoin(client);
     }
 
     public clientJoin(client: Client): void {
+        let socket = this.getSocket(client);
+
+        socket.emit('roomJoin', this.roomId);
+
+        var roomLeaveListener = () => {
+            this.clientLeave(client);
+            socket.leave(this.roomId);
+            socket.removeListener("roomLeave", roomLeaveListener);
+            socket.removeListener("disconnect", roomLeaveListener);
+        };
+        socket.on('roomLeave', roomLeaveListener);
+        socket.on('disconnect', roomLeaveListener);
+
+
         this.roomEventEmitter.emit("onClientJoin", client);
-        
         console.log(`Client:${client.clientId} joined the room:${this.roomId}`);
-        this.setClientJoinEvents(client);
     }
 
     public clientLeave(client: Client): void {
         this.roomEventEmitter.emit("onClientLeave", client);
-
         console.log(`Client:${client.clientId} left the room:${this.roomId}`);
     }
 
@@ -84,9 +78,11 @@ export class Room {
         //Delta fossil algorithm patch prev&current state
     }
 
+    //Send state to clients
     private sendState(): void {
-        //Send state changes
         this.patchState();
+
+        var buffer = this.state.Serialize();
     }
 
     private changeState(newState: RoomState): void {
