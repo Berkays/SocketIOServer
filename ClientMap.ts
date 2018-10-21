@@ -1,5 +1,5 @@
 import { Client } from "./Client";
 
-export class ClientDictionary {
+export interface ClientMap {
     [key: string]: Client;
 }
