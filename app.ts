@@ -1,7 +1,7 @@
 import SocketIO = require('socket.io');
 
 import { Room } from "./Room";
-import { RoomDictionary } from "./RoomDictionary";
+import { RoomMap } from "./RoomMap";
 import { Client } from "./Client";
 
 const express = require('express');
@@ -11,7 +11,7 @@ const io = SocketIO(server);
 
 const port = 5000;
 
-let rooms = new RoomDictionary();
+let rooms:RoomMap = {};
 
 io.on('connection', (socket) => {
     //Search for an available room or create one
