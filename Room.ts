@@ -23,11 +23,21 @@ export class Room {
         this.server = server;
         //Set matchmaking state
         this.state = new MatchmakeState(this.roomEventEmitter);
+
+        this.stateMessageEvents();
+    }
+
+    private stateMessageEvents(): void {
+        this.roomEventEmitter.on('destroy', () => { this.destroyRoom(); });
     }
 
     //Get socket with client id
     private getSocket(client: Client): Socket {
         return this.server.sockets.connected[client.clientId];
+    }
+
+    private destroyRoom(): void {
+        console.log("Room destroyed: " + this.roomId);
     }
 
     public requestJoin(client: Client): boolean {
@@ -42,12 +52,15 @@ export class Room {
         var roomLeaveListener = () => {
             this.clientLeave(client);
             socket.leave(this.roomId);
-            socket.removeListener("roomLeave", roomLeaveListener);
-            socket.removeListener("disconnect", roomLeaveListener);
+            socket.removeListener('roomLeave', roomLeaveListener);
+            socket.removeListener('disconnect', roomLeaveListener);
         };
         socket.on('roomLeave', roomLeaveListener);
         socket.on('disconnect', roomLeaveListener);
 
+        //Emits eventName on state
+        //State needs to implement the given event in the setStateEvents method by overriding
+        socket.on('event', (eventName: any) => this.roomEventEmitter.emit(eventName));
 
         this.roomEventEmitter.emit("onClientJoin", client);
         console.log(`Client:${client.clientId} joined the room:${this.roomId}`);
@@ -56,10 +69,6 @@ export class Room {
     public clientLeave(client: Client): void {
         this.roomEventEmitter.emit("onClientLeave", client);
         console.log(`Client:${client.clientId} left the room:${this.roomId}`);
-    }
-
-    public clientMessage(data: string): void {
-        this.roomEventEmitter.emit("onClientMessage", data);
     }
 
     //Broadcast message to all clients except sender

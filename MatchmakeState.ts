@@ -5,8 +5,8 @@ import { RoomState } from "./RoomState";
 import { Client } from "./Client";
 import { ClientMap } from "./ClientMap";
 
-
 const maxPlayerCount = 2;
+const roomDestroyTime = 2000;
 
 export class MatchmakeState extends RoomState {
 
@@ -17,24 +17,29 @@ export class MatchmakeState extends RoomState {
     //Locked rooms cannot be joined
     private locked: boolean;
 
-    constructor(stateEvents: EventEmitter) {
-        super(stateEvents);
+    private timer: NodeJS.Timeout;
+
+    constructor(stateEventEmitter: EventEmitter) {
+        super(stateEventEmitter);
 
         this.clients = {};
         this.playerCount = 0;
         this.locked = false;
     }
 
-    public requestJoin(client: Client): boolean {
+    requestJoin(client: Client): boolean {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+
         if (this.locked)
             return false;
 
-        if (this.playerCount < maxPlayerCount) {
+        if (this.playerCount < maxPlayerCount)
             return true;
-        }
-        else {
+        else
             return false;
-        }
     }
 
     onClientJoin(client: Client): void {
@@ -57,7 +62,7 @@ export class MatchmakeState extends RoomState {
         this.playerCount--;
 
         if (this.playerCount == 0) {
-            //Do:destroy room
+            this.destroyRoom();
         }
         else if (this.locked) {
             //Unlock room for join
@@ -65,15 +70,18 @@ export class MatchmakeState extends RoomState {
         }
     }
 
-    onClientMessage(data: string): void {
-        //Do nothing in matchmaking
-    }
-
     Serialize(): Buffer {
         return BSON.serialize({
             clients: this.clients,
             playerCount: this.playerCount
         });
+    }
+
+    //Destroy room if no activity in 'roomDestroyTime' ms
+    destroyRoom(): void {
+        this.timer = setTimeout(() => {
+            this.stateEventEmitter.emit('destroy');
+        }, roomDestroyTime);
     }
 
 }
