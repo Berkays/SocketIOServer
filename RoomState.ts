@@ -1,26 +1,36 @@
 import { EventEmitter } from "events";
-import { Client } from "./Client";
+
+import { Room } from "./Room";
+import { Socket } from "socket.io";
 
 export abstract class RoomState {
 
+    protected room: Room;
     protected stateEventEmitter: EventEmitter;
 
-    constructor(eventEmitter: EventEmitter) {
+    constructor(room: Room, eventEmitter: EventEmitter) {
+        this.room = room;
         this.stateEventEmitter = eventEmitter;
         this.setStateEvents();
     }
 
+    //Override in derived class and call super.setStateEvents()
     protected setStateEvents(): void {
+        this.stateEventEmitter.removeAllListeners();
         //Arrow functions to bind class instance to this reference instead of event emitter
-        this.stateEventEmitter.on("onClientJoin", (client: Client) => { this.onClientJoin(client); });
-        this.stateEventEmitter.on("onClientLeave", (client: Client) => { this.onClientLeave(client) });
+        this.stateEventEmitter.on("onClientJoin", (socket: Socket) => { this.onClientJoin(socket); });
+        this.stateEventEmitter.on("onClientLeave", (socket: Socket) => { this.onClientLeave(socket) });
     }
 
-    abstract requestJoin(client: Client): boolean;
+    public abstract requestJoin(socket: Socket): boolean;
 
-    abstract onClientJoin(client: Client): void;
+    protected abstract onClientJoin(socket: Socket): void;
 
-    abstract onClientLeave(client: Client): void;
+    protected abstract onClientLeave(socket: Socket): void;
 
-    abstract Serialize(): Buffer;
+    public abstract Serialize(): ArrayBuffer;
+
+    protected SendState(): void {
+        this.room.SendState();
+    }
 }
