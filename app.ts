@@ -2,7 +2,9 @@ import SocketIO = require('socket.io');
 
 import { Room } from "./Room";
 import { RoomMap } from "./RoomMap";
-import { Client } from "./Client";
+import { MatchmakeState } from './MatchmakeState';
+import { GameState } from './Examples/TicTacToe/GameState';
+import { Socket } from 'socket.io';
 
 const express = require('express');
 const app = express();
@@ -11,53 +13,53 @@ const io = SocketIO(server);
 
 const port = 5000;
 
-let rooms:RoomMap = {};
+let rooms: RoomMap = {};
+
+const stateList: any =
+    [
+        MatchmakeState,
+        GameState
+    ]
 
 io.on('connection', (socket) => {
     //Search for an available room or create one
-    socket.on('matchmake', (client: Client) => matchmakePlayer(socket, client));
+    socket.on('client_room_join', () => matchmakePlayer(socket));
 });
 
 server.listen(port);
 
 //Joins client socket to a new or existing room.
-function matchmakePlayer(socket: SocketIO.Socket, client: Client): void {
-
-    let room: Room = null;
-
+function matchmakePlayer(socket: Socket): void {
     //Search for an available room.
-    room = searchRoom(client);
+    let room = searchRoom(socket);
 
     //If no available room found, create new room.
     if (room == null)
         room = createRoom();
 
-    socket.join(room.roomId, () => {
-        room.clientJoin(client);
-    });
+    //Join to room space
+    socket.join(room.roomId, () => room.requestJoin(socket));
 }
 
 //Searches an available room from the rooms list.
-function searchRoom(client: Client): Room {
+function searchRoom(socket: Socket): Room {
     if (rooms == null)
         return null;
     let _room: Room = null;
     Object.keys(rooms).forEach((key) => {
         let room = rooms[key];
 
-        if (room.requestJoin(client))
+        if (room.requestJoin(socket))
             _room = room;
-
 
         debugSearchRoom(_room);
     });
-
     return _room;
 }
 
-//Creates a new room.
+//Create new room.
 function createRoom(): Room {
-    let room = new Room(io);
+    let room = new Room(io, stateList);
 
     rooms[room.roomId] = room;
 
