@@ -1,38 +1,20 @@
-import { EventEmitter } from "events";
-const BSON = require('bson');
+import { BSON } from 'bsonfy';
 
-import { RoomState } from "./RoomState";
-import { Client } from "./Client";
-import { ClientMap } from "./ClientMap";
+import { RoomState } from './RoomState';
+import { Socket } from 'socket.io';
 
 const maxPlayerCount = 2;
 const roomDestroyTime = 2000;
 
 export class MatchmakeState extends RoomState {
-
-    //List of connected clients in the room
-    private clients: ClientMap;
     //Current player count in the room
-    private playerCount: number;
+    private playerCount: number = 0;
     //Locked rooms cannot be joined
-    private locked: boolean;
-
+    private locked: boolean = false; //TODO: Move lock to Room.ts
+    //Inactive room destroy timer
     private timer: NodeJS.Timeout;
 
-    constructor(stateEventEmitter: EventEmitter) {
-        super(stateEventEmitter);
-
-        this.clients = {};
-        this.playerCount = 0;
-        this.locked = false;
-    }
-
-    requestJoin(client: Client): boolean {
-        if (this.timer) {
-            clearTimeout(this.timer);
-            this.timer = null;
-        }
-
+    public requestJoin(socket: Socket): boolean {
         if (this.locked)
             return false;
 
@@ -42,23 +24,25 @@ export class MatchmakeState extends RoomState {
             return false;
     }
 
-    onClientJoin(client: Client): void {
-        if (this.clients[client.clientId])
-            return;
-        this.clients[client.clientId] = client;
-        this.playerCount++;
+    protected onClientJoin(socket: Socket): void {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
 
+        //Notify client
+        this.room.RPC('server_room_join', socket, this.room.roomId);
+
+        this.playerCount++;
+        console.log(`Client:${socket.id} joined the room:${this.room.roomId}`);
+        console.log("Player Count:" + this.playerCount);
         if (this.playerCount == maxPlayerCount) {
-            //Do:start game action
             this.locked = true;
+            this.room.NextState();
         }
     }
 
-    onClientLeave(client: Client): void {
-        if (!this.clients[client.clientId])
-            return;
-
-        delete this.clients[client.clientId];
+    protected onClientLeave(socket: Socket): void {
         this.playerCount--;
 
         if (this.playerCount == 0) {
@@ -68,19 +52,20 @@ export class MatchmakeState extends RoomState {
             //Unlock room for join
             this.locked = false;
         }
+        console.log(`Client:${socket.id} left the room:${this.room.roomId}`);
+        console.log("Player Count:" + this.playerCount);
     }
 
-    Serialize(): Buffer {
+    public Serialize(): ArrayBuffer {
         return BSON.serialize({
-            clients: this.clients,
             playerCount: this.playerCount
-        });
+        }).buffer;
     }
 
     //Destroy room if no activity in 'roomDestroyTime' ms
-    destroyRoom(): void {
+    private destroyRoom(): void {
         this.timer = setTimeout(() => {
-            this.stateEventEmitter.emit('destroy');
+            //TODO: Mark room for destroy
         }, roomDestroyTime);
     }
 
